@@ -41,8 +41,19 @@ ul{list-style:none;margin:0;padding:0}
 .add{display:flex;gap:10px;margin-top:10px}
 .add input{margin:0;flex:1}
 ul input[type=text]{margin:0 0 8px}
+.ch{display:flex;gap:3px;align-items:flex-end;margin:10px 0 6px}
+.col{flex:1;min-width:0;height:190px;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;padding:0;border:0;background:none;cursor:pointer}
+.col .v{font-size:.68rem;text-align:center;color:var(--mut);min-height:1em;font-variant-numeric:tabular-nums}
+.col .bar{display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden}
+.col .bar i{display:block;min-height:0}
+.col .l{font-size:.7rem;text-align:center;color:var(--mut);padding-top:4px;border-top:1px solid var(--ink)}
+.cr{margin:0 0 14px}
+.cr .t{display:flex;justify-content:space-between;align-items:center;font-size:.9rem;margin-bottom:4px;font-variant-numeric:tabular-nums}
+.cr .d{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:8px;vertical-align:-1px}
+.cr .tr{height:12px;background:var(--line);border-radius:6px;overflow:hidden}
+.cr .tr i{display:block;height:100%;border-radius:6px}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-nav button{flex:1;min-height:56px;border:0;background:none;color:var(--mut);font-weight:600;font-size:.9rem;cursor:pointer}
+nav button{flex:1;min-height:56px;border:0;background:none;color:var(--mut);font-weight:600;font-size:.85rem;cursor:pointer}
 nav button[aria-current=true]{color:var(--acc);box-shadow:inset 0 3px 0 var(--acc)}
 </style>
 </head>
@@ -75,6 +86,17 @@ nav button[aria-current=true]{color:var(--acc);box-shadow:inset 0 3px 0 var(--ac
   <ul id="list"></ul>
 </section>
 
+<section id="v-auswertung" hidden>
+  <h1>Auswertung</h1>
+  <label>Jahr<select id="yr"></select></label>
+  <p class="mut" id="ysum"></p>
+  <h2>Stunden pro Monat</h2>
+  <div class="ch" id="mch"></div>
+  <p class="mut">Tippe auf einen Monat, um die Einträge zu sehen.</p>
+  <h2>Stunden je Kunde</h2>
+  <div id="cbar"></div>
+</section>
+
 <section id="v-kunden" hidden>
   <h1>Kunden</h1>
   <p class="mut" id="cnt"></p>
@@ -92,10 +114,13 @@ nav button[aria-current=true]{color:var(--acc);box-shadow:inset 0 3px 0 var(--ac
 <nav>
   <button data-v="erfassen">Erfassen</button>
   <button data-v="eintraege">Einträge</button>
+  <button data-v="auswertung">Auswertung</button>
   <button data-v="kunden">Kunden</button>
 </nav>
 <script>
 const $=s=>document.querySelector(s), MAX=10, KEY='stunden-v1';
+const MN=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+const COL=['#0f5f5a','#d08c1e','#3b6fb6','#b5483a','#7a5fa8','#4f9a4a','#c0609a','#6b7b83','#a38a2c','#2a9db5'];
 let S={customers:[],entries:{}};
 try{const r=localStorage.getItem(KEY);if(r){const p=JSON.parse(r);if(p&&Array.isArray(p.customers)&&p.entries)S=p}}catch(e){}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(S));return true}catch(e){return false}}
@@ -106,9 +131,9 @@ const name=id=>(S.customers.find(c=>c.id===id)||{name:'(unbekannt)'}).name;
 function say(el,t,bad){el.textContent=t;el.className=bad?'err':''}
 
 function show(v){
-  ['erfassen','eintraege','kunden'].forEach(n=>{$('#v-'+n).hidden=n!==v});
+  ['erfassen','eintraege','auswertung','kunden'].forEach(n=>{$('#v-'+n).hidden=n!==v});
   document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.v===v));
-  if(v==='erfassen')renderForm();if(v==='eintraege')renderList();if(v==='kunden')renderCust();
+  if(v==='erfassen')renderForm();if(v==='eintraege')renderList();if(v==='auswertung')renderStats();if(v==='kunden')renderCust();
   window.scrollTo(0,0);
 }
 function renderForm(){
@@ -144,7 +169,7 @@ function renderList(){
     .sort((a,b)=>b.split('|')[1].localeCompare(a.split('|')[1])||name(a.split('|')[0]).localeCompare(name(b.split('|')[0])));
   const tot={};let all=0;rows.forEach(k=>{const c=k.split('|')[0];tot[c]=(tot[c]||0)+S.entries[k];all+=S.entries[k]});
   const t=$('#tots');t.textContent='';
-  if(!rows.length){t.innerHTML='';const p=document.createElement('p');p.className='mut';p.textContent='Keine Einträge in diesem Monat.';t.appendChild(p)}
+  if(!rows.length){const p=document.createElement('p');p.className='mut';p.textContent='Keine Einträge in diesem Monat.';t.appendChild(p)}
   else{
     Object.keys(tot).forEach(c=>{const r=document.createElement('div');r.className='tot';r.innerHTML='<span></span><b></b>';r.children[0].textContent=name(c);r.children[1].textContent=fmt(tot[c])+' h';t.appendChild(r)});
     const r=document.createElement('div');r.className='tot all';r.innerHTML='<span>Summe</span><b></b>';r.children[1].textContent=fmt(all)+' h';t.appendChild(r);
@@ -156,6 +181,42 @@ function renderList(){
     b.children[0].textContent=fmtDate(d)+'  '+name(c);b.children[1].textContent=fmt(S.entries[k])+' h';
     b.onclick=()=>{$('#cs').value=c;$('#dt').value=d;show('erfassen');$('#cs').value=c;loadVal()};
     li.appendChild(b);ul.appendChild(li);
+  });
+}
+function renderStats(){
+  const ys=[...new Set(Object.keys(S.entries).map(k=>k.split('|')[1].slice(0,4)).concat([today().slice(0,4)]))].sort().reverse();
+  const sel=$('#yr'),cur=sel.value;sel.textContent='';
+  ys.forEach(y=>{const o=document.createElement('option');o.value=o.textContent=y;sel.appendChild(o)});
+  if(ys.includes(cur))sel.value=cur;
+  const y=sel.value,M=Array.from({length:12},()=>({})),perC={};let all=0;
+  Object.keys(S.entries).forEach(k=>{
+    const[c,d]=k.split('|');if(d.slice(0,4)!==y)return;
+    const i=+d.slice(5,7)-1,h=S.entries[k];M[i][c]=(M[i][c]||0)+h;perC[c]=(perC[c]||0)+h;all+=h;
+  });
+  const tots=M.map(m=>Object.values(m).reduce((a,b)=>a+b,0)),max=Math.max(1,...tots);
+  $('#ysum').textContent=all?fmt(all)+' Stunden in '+y:'Keine Einträge in '+y+'.';
+  const ch=$('#mch');ch.textContent='';
+  MN.forEach((n,i)=>{
+    const col=document.createElement('button');
+    col.className='col';col.setAttribute('aria-label',n+' '+y+': '+fmt(tots[i])+' Stunden');
+    const v=document.createElement('span');v.className='v';v.textContent=tots[i]?Math.round(tots[i]):'';
+    const bar=document.createElement('div');bar.className='bar';bar.style.height=Math.round(tots[i]/max*140)+'px';
+    S.customers.forEach((c,ci)=>{const h=M[i][c.id];if(!h)return;const s=document.createElement('i');s.style.flex=h+' 1 0';s.style.background=COL[ci%COL.length];bar.appendChild(s)});
+    const l=document.createElement('span');l.className='l';l.textContent=n;
+    col.appendChild(v);col.appendChild(bar);col.appendChild(l);
+    col.onclick=()=>{$('#mo').value=y+'-'+String(i+1).padStart(2,'0');show('eintraege')};
+    ch.appendChild(col);
+  });
+  const cb=$('#cbar');cb.textContent='';
+  const list=S.customers.map((c,ci)=>({c,ci,h:perC[c.id]||0})).filter(x=>x.h>0).sort((a,b)=>b.h-a.h);
+  if(!list.length){const p=document.createElement('p');p.className='mut';p.textContent='Keine Daten für '+y+'.';cb.appendChild(p)}
+  list.forEach(x=>{
+    const r=document.createElement('div');r.className='cr';
+    r.innerHTML='<div class="t"><span><i class="d"></i><span class="n"></span></span><b></b></div><div class="tr"><i></i></div>';
+    r.querySelector('.d').style.background=COL[x.ci%COL.length];
+    r.querySelector('.n').textContent=x.c.name;r.querySelector('b').textContent=fmt(x.h)+' h';
+    const f=r.querySelector('.tr i');f.style.width=(x.h/list[0].h*100)+'%';f.style.background=COL[x.ci%COL.length];
+    cb.appendChild(r);
   });
 }
 function renderCust(){
@@ -195,7 +256,7 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.
 $('#goc').onclick=()=>show('kunden');
 $('#cs').onchange=loadVal;$('#dt').onchange=loadVal;
 $('#mi').onclick=()=>step(-.5);$('#pl').onclick=()=>step(.5);
-$('#sv').onclick=saveEntry;$('#mo').onchange=renderList;
+$('#sv').onclick=saveEntry;$('#mo').onchange=renderList;$('#yr').onchange=renderStats;
 $('#na').onclick=addCust;$('#nn').onkeydown=e=>{if(e.key==='Enter')addCust()};
 $('#cp').onclick=backup;$('#rs').onclick=restore;
 try{const c=document.createElement('canvas');c.width=c.height=180;const g=c.getContext('2d');
