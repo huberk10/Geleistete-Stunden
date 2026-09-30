@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Stunden">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Stunden</title>
+<link rel="apple-touch-icon" id="ti" href="">
+<style>
+:root{--bg:#eef1ef;--card:#fff;--ink:#16302d;--mut:#5d716e;--acc:#0f5f5a;--aci:#fff;--line:#d3dcd9;--err:#a3321f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1918;--card:#182725;--ink:#e6f0ee;--mut:#8fa7a3;--acc:#4fb5ac;--aci:#06211f;--line:#2a3f3c;--err:#ff9a86}}
+:root[data-theme="dark"]{--bg:#0f1918;--card:#182725;--ink:#e6f0ee;--mut:#8fa7a3;--acc:#4fb5ac;--aci:#06211f;--line:#2a3f3c;--err:#ff9a86}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:480px;margin:0 auto;padding:20px 18px 110px}
+h1{font-size:1.5rem;margin:8px 0 18px;letter-spacing:-.01em}
+h2{font-size:1.05rem;margin:28px 0 8px}
+label{display:block;font-weight:600;font-size:.9rem;margin:0 0 14px}
+select,input,textarea,button{font:inherit;color:inherit}
+select,input[type=date],input[type=month],input[type=text],textarea{display:block;width:100%;margin-top:6px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);min-height:48px}
+textarea{min-height:90px;font-size:.8rem}
+.hrs{display:flex;gap:10px;align-items:stretch;margin:6px 0 4px}
+.hrs input{flex:1;min-width:0;text-align:center;font-size:3rem;font-weight:700;padding:8px;border:1px solid var(--line);border-radius:14px;background:var(--card);-moz-appearance:textfield}
+.hrs button{width:64px;font-size:2rem;border:1px solid var(--line);border-radius:14px;background:var(--card);cursor:pointer}
+.hint,.mut{color:var(--mut);font-size:.85rem;margin:0 0 18px}
+button.primary{width:100%;min-height:52px;border:0;border-radius:12px;background:var(--acc);color:var(--aci);font-weight:700;font-size:1.05rem;cursor:pointer}
+button.sec{min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:10px;background:var(--card);cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+#msg,#bmsg{min-height:1.4em;margin:12px 0 0;font-size:.95rem}
+.err{color:var(--err)}
+ul{list-style:none;margin:0;padding:0}
+.row{display:flex;justify-content:space-between;align-items:center;width:100%;padding:13px 4px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer}
+.row b{font-variant-numeric:tabular-nums}
+.tot{display:flex;justify-content:space-between;padding:6px 4px;font-variant-numeric:tabular-nums}
+.tot.all{border-top:2px solid var(--ink);margin-top:6px;padding-top:10px;font-weight:700}
+.add{display:flex;gap:10px;margin-top:10px}
+.add input{margin:0;flex:1}
+ul input[type=text]{margin:0 0 8px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;min-height:56px;border:0;background:none;color:var(--mut);font-weight:600;font-size:.9rem;cursor:pointer}
+nav button[aria-current=true]{color:var(--acc);box-shadow:inset 0 3px 0 var(--acc)}
+</style>
+</head>
+<body>
+<main>
+<section id="v-erfassen">
+  <h1>Stunden erfassen</h1>
+  <div id="noc" hidden>
+    <p>Es gibt noch keinen Kunden. Lege zuerst einen Kunden an.</p>
+    <button class="primary" id="goc">Kunden anlegen</button>
+  </div>
+  <div id="form">
+    <label>Kunde<select id="cs"></select></label>
+    <label>Tag<input type="date" id="dt"></label>
+    <div class="hrs">
+      <button id="mi" aria-label="0,5 Stunden weniger">−</button>
+      <input id="hr" type="number" inputmode="decimal" step="0.25" min="0" max="24" placeholder="0" aria-label="Stunden">
+      <button id="pl" aria-label="0,5 Stunden mehr">+</button>
+    </div>
+    <p class="hint">Stunden an diesem Tag für diesen Kunden. Leer oder 0 löscht den Eintrag.</p>
+    <button class="primary" id="sv">Speichern</button>
+    <p id="msg" role="status"></p>
+  </div>
+</section>
+
+<section id="v-eintraege" hidden>
+  <h1>Einträge</h1>
+  <label>Monat<input type="month" id="mo"></label>
+  <div id="tots"></div>
+  <ul id="list"></ul>
+</section>
+
+<section id="v-kunden" hidden>
+  <h1>Kunden</h1>
+  <p class="mut" id="cnt"></p>
+  <ul id="cl"></ul>
+  <div class="add"><input type="text" id="nn" placeholder="Name des Hotels" aria-label="Neuer Kunde"><button class="sec" id="na">Hinzufügen</button></div>
+  <p id="cmsg" class="err" role="status"></p>
+  <h2>Sicherung</h2>
+  <p class="mut">Die Daten liegen nur auf diesem iPhone. Kopiere die Sicherung und füge sie z. B. in eine Notiz ein.</p>
+  <button class="sec" id="cp">Sicherung kopieren</button>
+  <textarea id="bk" aria-label="Sicherungstext" placeholder="Sicherungstext hier einfügen, dann wiederherstellen"></textarea>
+  <div style="margin-top:10px"><button class="sec" id="rs">Wiederherstellen</button></div>
+  <p id="bmsg" role="status"></p>
+</section>
+</main>
+<nav>
+  <button data-v="erfassen">Erfassen</button>
+  <button data-v="eintraege">Einträge</button>
+  <button data-v="kunden">Kunden</button>
+</nav>
+<script>
+const $=s=>document.querySelector(s), MAX=10, KEY='stunden-v1';
+let S={customers:[],entries:{}};
+try{const r=localStorage.getItem(KEY);if(r){const p=JSON.parse(r);if(p&&Array.isArray(p.customers)&&p.entries)S=p}}catch(e){}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(S));return true}catch(e){return false}}
+const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+const fmt=n=>(+n).toLocaleString('de-DE',{maximumFractionDigits:2});
+const fmtDate=s=>{const[y,m,d]=s.split('-');return d+'.'+m+'.'+y};
+const name=id=>(S.customers.find(c=>c.id===id)||{name:'(unbekannt)'}).name;
+function say(el,t,bad){el.textContent=t;el.className=bad?'err':''}
+
+function show(v){
+  ['erfassen','eintraege','kunden'].forEach(n=>{$('#v-'+n).hidden=n!==v});
+  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.v===v));
+  if(v==='erfassen')renderForm();if(v==='eintraege')renderList();if(v==='kunden')renderCust();
+  window.scrollTo(0,0);
+}
+function renderForm(){
+  const has=S.customers.length>0;$('#noc').hidden=has;$('#form').hidden=!has;
+  const sel=$('#cs'),cur=sel.value;sel.textContent='';
+  S.customers.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name;sel.appendChild(o)});
+  if(S.customers.some(c=>c.id===cur))sel.value=cur;
+  if(!$('#dt').value)$('#dt').value=today();
+  loadVal();
+}
+function loadVal(){
+  const k=$('#cs').value+'|'+$('#dt').value,v=S.entries[k];
+  $('#hr').value=v===undefined?'':v;
+  say($('#msg'),v===undefined?'':'Bereits erfasst: '+fmt(v)+' h. Speichern überschreibt.');
+}
+function step(d){
+  let v=parseFloat(String($('#hr').value).replace(',','.'));if(isNaN(v))v=0;
+  $('#hr').value=Math.min(24,Math.max(0,Math.round((v+d)*4)/4));
+}
+function saveEntry(){
+  const raw=String($('#hr').value).replace(',','.').trim(),c=$('#cs').value,d=$('#dt').value;
+  if(!c||!d)return say($('#msg'),'Bitte Kunde und Tag wählen.',1);
+  const v=raw===''?0:parseFloat(raw);
+  if(isNaN(v)||v<0||v>24)return say($('#msg'),'Bitte eine Zahl zwischen 0 und 24 eingeben.',1);
+  const k=c+'|'+d;
+  if(v===0)delete S.entries[k];else S.entries[k]=v;
+  if(!persist())return say($('#msg'),'Speichern auf diesem Gerät nicht möglich.',1);
+  say($('#msg'),v===0?'Eintrag gelöscht.':'Gespeichert: '+fmt(v)+' h am '+fmtDate(d)+' für '+name(c)+'.');
+}
+function renderList(){
+  if(!$('#mo').value)$('#mo').value=today().slice(0,7);
+  const m=$('#mo').value,rows=Object.keys(S.entries).filter(k=>k.split('|')[1].startsWith(m))
+    .sort((a,b)=>b.split('|')[1].localeCompare(a.split('|')[1])||name(a.split('|')[0]).localeCompare(name(b.split('|')[0])));
+  const tot={};let all=0;rows.forEach(k=>{const c=k.split('|')[0];tot[c]=(tot[c]||0)+S.entries[k];all+=S.entries[k]});
+  const t=$('#tots');t.textContent='';
+  if(!rows.length){t.innerHTML='';const p=document.createElement('p');p.className='mut';p.textContent='Keine Einträge in diesem Monat.';t.appendChild(p)}
+  else{
+    Object.keys(tot).forEach(c=>{const r=document.createElement('div');r.className='tot';r.innerHTML='<span></span><b></b>';r.children[0].textContent=name(c);r.children[1].textContent=fmt(tot[c])+' h';t.appendChild(r)});
+    const r=document.createElement('div');r.className='tot all';r.innerHTML='<span>Summe</span><b></b>';r.children[1].textContent=fmt(all)+' h';t.appendChild(r);
+  }
+  const ul=$('#list');ul.textContent='';
+  rows.forEach(k=>{
+    const[c,d]=k.split('|'),li=document.createElement('li'),b=document.createElement('button');
+    b.className='row';b.innerHTML='<span></span><b></b>';
+    b.children[0].textContent=fmtDate(d)+'  '+name(c);b.children[1].textContent=fmt(S.entries[k])+' h';
+    b.onclick=()=>{$('#cs').value=c;$('#dt').value=d;show('erfassen');$('#cs').value=c;loadVal()};
+    li.appendChild(b);ul.appendChild(li);
+  });
+}
+function renderCust(){
+  $('#cnt').textContent=S.customers.length+' von '+MAX+' Kunden';
+  const ul=$('#cl');ul.textContent='';
+  S.customers.forEach(c=>{
+    const li=document.createElement('li'),i=document.createElement('input');
+    i.type='text';i.value=c.name;i.setAttribute('aria-label','Kundenname');
+    i.onchange=()=>{const v=i.value.trim();if(!v){i.value=c.name;return}c.name=v;persist()};
+    li.appendChild(i);ul.appendChild(li);
+  });
+  $('#na').disabled=S.customers.length>=MAX;
+}
+function addCust(){
+  const v=$('#nn').value.trim(),m=$('#cmsg');
+  if(!v)return say(m,'Bitte einen Namen eingeben.',1);
+  if(S.customers.length>=MAX)return say(m,'Maximal '+MAX+' Kunden.',1);
+  S.customers.push({id:'c'+Date.now().toString(36),name:v});
+  $('#nn').value='';say(m,'');persist();renderCust();
+}
+function backup(){
+  const t=JSON.stringify(S),ta=$('#bk');ta.value=t;
+  const ok=()=>say($('#bmsg'),'Sicherung kopiert.');
+  const fail=()=>{ta.select();say($('#bmsg'),'Text markiert. Bitte manuell kopieren.')};
+  try{navigator.clipboard.writeText(t).then(ok,fail)}catch(e){fail()}
+}
+function restore(){
+  try{
+    const p=JSON.parse($('#bk').value);
+    if(!p||!Array.isArray(p.customers)||typeof p.entries!=='object')throw 0;
+    S={customers:p.customers.slice(0,MAX),entries:p.entries};persist();renderCust();
+    say($('#bmsg'),'Wiederhergestellt: '+S.customers.length+' Kunden, '+Object.keys(S.entries).length+' Einträge.');
+  }catch(e){say($('#bmsg'),'Der Text ist keine gültige Sicherung.',1)}
+}
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+$('#goc').onclick=()=>show('kunden');
+$('#cs').onchange=loadVal;$('#dt').onchange=loadVal;
+$('#mi').onclick=()=>step(-.5);$('#pl').onclick=()=>step(.5);
+$('#sv').onclick=saveEntry;$('#mo').onchange=renderList;
+$('#na').onclick=addCust;$('#nn').onkeydown=e=>{if(e.key==='Enter')addCust()};
+$('#cp').onclick=backup;$('#rs').onclick=restore;
+try{const c=document.createElement('canvas');c.width=c.height=180;const g=c.getContext('2d');
+  g.fillStyle='#0f5f5a';g.fillRect(0,0,180,180);g.fillStyle='#fff';g.font='bold 110px -apple-system,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('h',90,96);
+  $('#ti').href=c.toDataURL('image/png')}catch(e){}
+show('erfassen');
+</script>
+</body>
+</html>
